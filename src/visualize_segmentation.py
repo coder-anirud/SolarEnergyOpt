@@ -3,45 +3,52 @@ import glob
 from pathlib import Path
 from segmentation import segment_clouds_bgr, overlay_mask
 
-from pathlib import Path
-
-
 HERE = Path(__file__).resolve()
 PROJECT_ROOT = HERE.parent.parent
 RECORD_DIR = PROJECT_ROOT / "recordings"
 
+mp4s = sorted(glob.glob(str(RECORD_DIR / "sky_*.mp4")))
+print("Found mp4 files:", len(mp4s))
+if not mp4s:
+    raise RuntimeError(f"No sky_*.mp4 found in {RECORD_DIR}. Run collect_video.py first.")
 
-# newest frames folder
-folders = sorted(glob.glob(str(RECORD_DIR / "frames_*")))
-print("Found frame folders:", len(folders))
-if not folders:
-    raise RuntimeError(f"No frames_* folders found in {RECORD_DIR}. Run collect_video.py first.")
+video_path = mp4s[-1]
+print("Using video:", video_path)
 
-frames_dir = folders[-1]
-print("Using frames from:", frames_dir)
+cap = cv2.VideoCapture(video_path)
+print("Opened:", cap.isOpened())
+if not cap.isOpened():
+    raise RuntimeError("Could not open video.")
 
-frames = sorted(glob.glob(str(Path(frames_dir) / "frame_*.jpg")))
-print("Frames found:", len(frames))
-if not frames:
-    raise RuntimeError("No frame_*.jpg files found.")
+frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+fps = cap.get(cv2.CAP_PROP_FPS)
+print("Frame count:", frame_count, "FPS:", fps)
 
-for p in frames:
-    frame = cv2.imread(p)
-    if frame is None:
-        continue
+while True:
+    ok, frame = cap.read()
+    if not ok or frame is None:
+        break
 
     cloud_mask, info = segment_clouds_bgr(frame)
     out = overlay_mask(frame, cloud_mask)
 
-    cv2.putText(out, f"cloud={info['cloud_coverage']:.2f}", (20, 40),
-                cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
+    cv2.putText(
+        out,
+        f"cloud={info['cloud_coverage']:.2f}",
+        (20, 40),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        1.0,
+        (255, 255, 255),
+        2,
+    )
 
     cv2.imshow("Overlay", out)
     cv2.imshow("Mask", cloud_mask)
 
     key = cv2.waitKey(30) & 0xFF
-    if key == ord('q'):
+    if key == ord("q"):
         break
 
+cap.release()
 cv2.destroyAllWindows()
 print("Done.")
