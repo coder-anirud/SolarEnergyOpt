@@ -1,0 +1,16 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+.vscode/
+
+# Generated models and feature tables
+*.joblib
+dataset_features.csv
+
+# Keep existing development samples; ignore new captures
+recordings/*
